@@ -17,6 +17,7 @@ All changes included in 1.7:
 ## Website projects
 
 - ([#11701](https://github.com/quarto-dev/quarto-cli/issues/11701)): Wrap HTML emitted by EJS templates in `{=html}` blocks to avoid memory blowup issues with Pandoc's parser.
+- ([#6552](https://github.com/quarto-dev/quarto-cli/discussions/6552)): Allow users to override the default EJS partial templates used to generate the `bodyEnvelope` (containing, e.g., the sidebar and footer `<nav>` elements.)
 
 ## Blog projects
 
