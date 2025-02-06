@@ -147,6 +147,12 @@ import { dashboardScssLayer } from "../../../format/dashboard/format-dashboard-s
 import { navigation } from "./website-shared.ts";
 import { isAboutPage } from "./about/website-about.ts";
 
+import {
+  kEjsPartials,
+  readEjsPartials,
+  resolveEjsPartialPaths,
+} from "../../../command/render/template.ts";
+
 export const kSidebarLogo = "logo";
 export const kSidebarLogoHref = "logo-href";
 export const kSidebarLogoAlt = "logo-alt";
@@ -371,12 +377,33 @@ export async function websiteNavigationExtras(
 
   const projTemplate = (template: string) =>
     resourcePath(`projects/website/templates/${template}`);
+
+  // compute cwd for render
+  const cwd = project.dir;
+
+  // Resolve the full path to user-defined EJS partial templates
+  resolveEjsPartialPaths(
+    format.metadata,
+    cwd,
+    project,
+  );
+
+  // Get the user EJS partials (if any)
+  const userPartials = readEjsPartials(format.metadata, cwd);
+
+  // create a dictionary where each EJS partial template is identified by its basename:
+  const ejsPartialsDict = Object.fromEntries(userPartials.map(path => [basename(path), path]));
+
+  // Determine whether the user has provided EJS partials that we were able to resolve.
+  const hasEjsPartials = format.metadata[kEjsPartials] !== false && userPartials.length > 0
+
+  // Render the body envelope, using the user's EJS partials if they exist
   const bodyEnvelope = {
-    before: renderEjs(projTemplate("nav-before-body.ejs"), { nav }),
-    afterPreamble: renderEjs(projTemplate("nav-after-body-preamble.ejs"), {
+    before: renderEjs(hasEjsPartials && Object.keys(ejsPartialsDict).includes("nav-before-body.ejs") ? ejsPartialsDict["nav-before-body.ejs"] : projTemplate("nav-before-body.ejs"), { nav }),
+    afterPreamble: renderEjs(hasEjsPartials && Object.keys(ejsPartialsDict).includes("nav-after-body-preamble.ejs") ? ejsPartialsDict["nav-after-body-preamble.ejs"]: projTemplate("nav-after-body-preamble.ejs"), {
       nav,
     }),
-    afterPostamble: renderEjs(projTemplate("nav-after-body-postamble.ejs"), {
+    afterPostamble: renderEjs(hasEjsPartials && Object.keys(ejsPartialsDict).includes("nav-after-body-postamble.ejs") ? ejsPartialsDict["nav-after-body-postamble.ejs"]: projTemplate("nav-after-body-postamble.ejs"), {
       nav,
     }),
   };

@@ -29,6 +29,7 @@ import { isWindows } from "../../deno_ral/platform.ts";
 
 export const kPatchedTemplateExt = ".patched";
 export const kTemplatePartials = "template-partials";
+export const kEjsPartials = "ejs-partials";
 
 /**
  * read and expand template partial globs
@@ -78,6 +79,69 @@ export function resolveTemplatePartialPaths(
   }
   const result = (metadata?.[kTemplatePartials] || []) as string[];
   metadata[kTemplatePartials] = result.map((path) => {
+    if (project && (path.startsWith("/") || path.startsWith("\\"))) {
+      return join(project.dir, path.slice(1));
+    } else if (!inputDir || isAbsolute(path)) {
+      return path;
+    } else {
+      if (isAbsolute(inputDir)) {
+        return join(inputDir, path);
+      } else {
+        return join(Deno.cwd(), inputDir, path);
+      }
+    }
+  });
+}
+
+
+/**
+ * read and expand template partial globs
+ *
+ * @param metadata
+ * @param cwd current working directory for glob expansion
+ */
+export function readEjsPartials(
+  metadata: Metadata,
+  inputDir?: string,
+) {
+  if (typeof (metadata?.[kEjsPartials]) === "string") {
+    metadata[kEjsPartials] = [metadata[kEjsPartials]];
+  }
+  const result = (metadata?.[kEjsPartials] || []) as string[];
+
+  inputDir = inputDir ? normalizePath(inputDir) : undefined;
+  const resolvePath = (path: string) => {
+    if (!inputDir || isAbsolute(path)) {
+      return path;
+    } else {
+      return join(inputDir, path);
+    }
+  };
+
+  return result.flatMap((path) => {
+    const result = [];
+    for (const walk of expandGlobSync(resolvePath(path))) {
+      result.push(walk.path);
+    }
+    if (!isGlob(path) && result.length === 0) {
+      throw new Error(
+        `EJS template partial ${path} was not found. Please confirm that the path to the file is correct.`,
+      );
+    }
+    return result;
+  });
+}
+
+export function resolveEjsPartialPaths(
+  metadata: Metadata,
+  inputDir?: string,
+  project?: ProjectContext,
+) {
+  if (typeof (metadata?.[kEjsPartials]) === "string") {
+    metadata[kEjsPartials] = [metadata[kEjsPartials]];
+  }
+  const result = (metadata?.[kEjsPartials] || []) as string[];
+  metadata[kEjsPartials] = result.map((path) => {
     if (project && (path.startsWith("/") || path.startsWith("\\"))) {
       return join(project.dir, path.slice(1));
     } else if (!inputDir || isAbsolute(path)) {
